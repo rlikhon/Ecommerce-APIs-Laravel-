@@ -26,8 +26,9 @@ Route::post('/register', [AccountController::class, 'register']);
 Route::post('/login', [AccountController::class, 'authenticate']);//->middleware('throttle:5,1');
 Route::post('/logout', [AccountController::class, 'logout'])->middleware('auth:sanctum');
 
-Route::group(['middleware' => ['auth:sanctum', 'checkCustomerRole']], function () {
+Route::group(['middleware' => ['auth:sanctum', 'checkCustomerRole'], 'prefix' => 'account'], function () {
     Route::post('/order', [OrderController::class, 'store']);
+    Route::get('/order', [OrderController::class, 'index']);
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist', [WishlistController::class, 'store']);
     Route::delete('/wishlist', [WishlistController::class, 'destroy']);

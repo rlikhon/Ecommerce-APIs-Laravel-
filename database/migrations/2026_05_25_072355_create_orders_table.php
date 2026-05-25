@@ -19,7 +19,7 @@ return new class extends Migration
             $table->double('shipping', 10, 2);
             $table->double('discount', 10, 2)->nullable();
             $table->enum('payment_status', ['pending', 'completed', 'failed'])->default('pending');
-            $table->enum('status', ['pending', 'shipped', 'completed', 'failed'])->default('pending');
+            $table->enum('status', ['pending', 'shipped', 'processing', 'delivered', 'cancelled', 'failed'])->default('pending');
             $table->text('note')->nullable();
             $table->string('payment_method');
             $table->string('payment_id')->nullable();
