@@ -7,9 +7,27 @@ use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Http\Resources\OrderResource;
+use App\Services\OrderService;
+use Illuminate\Http\JsonResponse;
 
 class OrderController extends Controller
 {
+    public function __construct(private OrderService $orderService) {}
+
+    /**
+     * Return all orders for the authenticated user.
+     *
+     * GET /api/account/order
+     */
+    public function index(): JsonResponse
+    {
+        $orders = $this->orderService->getUserOrders(auth()->user());
+        
+        return response()->json([
+            'data' => OrderResource::collection($orders),
+        ]);
+    }
+    
     public function store(Request $request)
     {
         if(!empty($request->cart) && count($request->cart) > 0){
@@ -52,22 +70,5 @@ class OrderController extends Controller
         } else {
             return response()->json(['message' => 'Cart is empty'], 400);
         }
-    }
-
-    /**
-     * Return all orders for the authenticated user.
-     *
-     * GET /api/account/order
-     */
-    public function index(Request $request)
-    {
-        $user = $request->user();
-
-        $orders = Order::where('user_id', $user->id)
-            ->with('orderItems')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return OrderResource::collection($orders)->response()->setStatusCode(200);
-    }
+    }    
 }
