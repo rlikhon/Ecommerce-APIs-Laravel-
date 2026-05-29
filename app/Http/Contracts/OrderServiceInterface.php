@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Contracts;
+namespace App\Http\Contracts;
 
-use App\Models\Order;
 use App\DataTransferObjects\OrderDTO;
+use App\Models\Order;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
 
 interface OrderServiceInterface
 {
-    public function getUserOrders(User $user): Collection;
-    
-    public function createOrder(OrderDTO $dto): Order;
+    public function getUserOrders(User $user, int $page = 1, int $perPage = 15): array;
+
+    public function createOrder(OrderDTO $dto): array;
+
+    public function confirmOrder(Order $order, ?string $description = null): Order;
 }

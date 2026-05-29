@@ -3,6 +3,7 @@
 namespace App\DataTransferObjects;
 
 use App\Http\Requests\StoreOrderRequest;
+use Illuminate\Support\Str;
 
 class OrderDTO
 {
@@ -22,7 +23,8 @@ class OrderDTO
         public readonly string $payment_status,
         public readonly string $status,
         public readonly int $user_id,
-        public readonly array $cart
+        public readonly array $cart,
+        public readonly string $confirmation_number = '',
     ) {}
 
     public static function fromRequest(StoreOrderRequest $request): self
@@ -43,7 +45,13 @@ class OrderDTO
             payment_status: $request->validated('payment_status'),
             status: $request->validated('status'),
             user_id: auth()->id(),
-            cart: $request->validated('cart')
+            cart: $request->validated('cart'),
+            confirmation_number: self::generateConfirmationNumber(),
         );
+    }
+
+    public static function generateConfirmationNumber(): string
+    {
+        return 'ORD-'.strtoupper(Str::random(4)).'-'.date('YmdHis').'-'.random_int(1000, 9999);
     }
 }

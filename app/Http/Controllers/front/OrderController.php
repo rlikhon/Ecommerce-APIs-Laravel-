@@ -2,47 +2,45 @@
 
 namespace App\Http\Controllers\front;
 
+use App\DataTransferObjects\OrderDTO;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Order;
-use App\Models\OrderItem;
+use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
-use App\Http\Requests\StoreOrderRequest;
-use App\DTO\OrderDTO;
 
 class OrderController extends Controller
 {
     public function __construct(private OrderService $orderService) {}
 
     /**
-     * Return all orders for the authenticated user.
+     * Return paginated orders for the authenticated user.
      *
      * GET /api/account/order
      */
     public function index(): JsonResponse
     {
-        $orders = $this->orderService->getUserOrders(auth()->user());
-        
+        $page = (int) request()->query('page', 1);
+        $perPage = min((int) request()->query('per_page', 15), 100);
+
+        $result = $this->orderService->getUserOrders(auth()->user(), $page, $perPage);
+
         return response()->json([
-            'data' => OrderResource::collection($orders),
+            'data' => OrderResource::collection($result['items']),
+            'pagination' => $result['pagination'],
         ]);
     }
-    
+
+    /**
+     * Create a new order.
+     *
+     * POST /api/account/order
+     */
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        // 1. Transform validated request data to a reliable DTO
         $dto = OrderDTO::fromRequest($request);
+        $result = $this->orderService->createOrder($dto);
 
-        // 2. Offload processing to your backend service layer
-        $order = $this->orderService->createOrder($dto);
-
-        // 3. Return an API standard formatted response
-        return response()->json([
-            'message' => 'Order placed successfully', 
-            'order_id' => $order->id,
-            'status' => 201
-        ], 201);
-    }   
+        return response()->json($result['response'], $result['status']);
+    }
 }
