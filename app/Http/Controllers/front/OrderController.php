@@ -43,4 +43,23 @@ class OrderController extends Controller
 
         return response()->json($result['response'], $result['status']);
     }
+
+    /**
+     * Get order detail for the authenticated user.
+     *
+     * GET /api/account/order/{id}
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function show(int $id): JsonResponse
+    {
+        $order = $this->orderService->getUserOrder(auth()->user(), $id);
+
+        if (! $order) {
+            return response()->json(['message' => 'Order not found.'], 404);
+        }
+
+        return response()->json(new OrderResource($order));
+    }
 }
