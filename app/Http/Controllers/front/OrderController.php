@@ -5,6 +5,7 @@ namespace App\Http\Controllers\front;
 use App\DataTransferObjects\OrderDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
@@ -45,12 +46,24 @@ class OrderController extends Controller
     }
 
     /**
+     * Update one or more orders to a new active status.
+     *
+     * PATCH /api/account/order/status
+     */
+    public function updateStatus(UpdateOrderStatusRequest $request): JsonResponse
+    {
+        $orderIds = $request->input('order_ids');
+        $newStatus = $request->input('status');
+
+        $result = $this->orderService->updateOrderStatus($orderIds, $newStatus, auth()->user());
+
+        return response()->json($result['response'], $result['status']);
+    }
+
+    /**
      * Get order detail for the authenticated user.
      *
      * GET /api/account/order/{id}
-     *
-     * @param int $id
-     * @return JsonResponse
      */
     public function show(int $id): JsonResponse
     {

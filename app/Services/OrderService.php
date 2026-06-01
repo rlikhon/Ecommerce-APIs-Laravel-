@@ -206,6 +206,99 @@ class OrderService implements OrderServiceInterface
     }
 
     /**
+     * Update one or more orders to a new status using the authenticated user context.
+     */
+    public function updateOrderStatus(array $orderIds, string $newStatus, User $user): array
+    {
+        $status = OrderStatus::from($newStatus);
+
+        $orders = Order::whereIn('id', $orderIds)
+            ->where('user_id', $user->id)
+            ->get();
+
+        if (count($orders) !== count($orderIds)) {
+            return [
+                'response' => [
+                    'error' => 'ORDERS_NOT_FOUND',
+                    'message' => 'One or more orders were not found or do not belong to the authenticated user.',
+                ],
+                'status' => 404,
+            ];
+        }
+
+        try {
+            $updatedOrders = DB::transaction(function () use ($orders, $status) {
+                return $orders->map(function (Order $order) use ($status) {
+                    $oldStatus = $order->status;
+
+                    if ($oldStatus === $status) {
+                        return [
+                            'order_id' => $order->id,
+                            'status' => $status->value,
+                            'updated' => false,
+                        ];
+                    }
+
+                    if (! $oldStatus->canTransitionTo($status)) {
+                        throw new InvalidOrderDataException(
+                            "Order {$order->id} cannot transition from {$oldStatus->value} to {$status->value}."
+                        );
+                    }
+
+                    $order->update([
+                        'status' => $status->value,
+                        'processed_at' => now(),
+                    ]);
+
+                    $this->logOrderAction(
+                        $order,
+                        'status_updated',
+                        $oldStatus,
+                        $status,
+                        "Order status updated to {$status->value}"
+                    );
+
+                    return [
+                        'order_id' => $order->id,
+                        'status' => $status->value,
+                        'updated' => true,
+                    ];
+                })->all();
+            });
+
+            return [
+                'response' => [
+                    'message' => 'Order status updated successfully.',
+                    'orders' => $updatedOrders,
+                ],
+                'status' => 200,
+            ];
+        } catch (InvalidOrderDataException $e) {
+            return [
+                'response' => [
+                    'error' => 'INVALID_ORDER_STATUS_TRANSITION',
+                    'message' => $e->getMessage(),
+                ],
+                'status' => 422,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Failed to update order status', [
+                'order_ids' => $orderIds,
+                'new_status' => $status->value,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'response' => [
+                    'error' => 'ORDER_STATUS_UPDATE_FAILED',
+                    'message' => 'Unable to update order status. Please try again later.',
+                ],
+                'status' => 500,
+            ];
+        }
+    }
+
+    /**
      * Log order state changes for audit trail.
      */
     private function logOrderAction(

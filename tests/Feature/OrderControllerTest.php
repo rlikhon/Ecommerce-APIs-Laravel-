@@ -402,5 +402,53 @@ describe('OrderController', function () {
 
             expect($updated->status->value)->toBe('confirmed');
         });
+
+        it('updates a single order status via API', function () {
+            $order = Order::factory()->create([
+                'user_id' => $this->user->id,
+                'status' => 'pending',
+            ]);
+
+            $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+                ->patchJson('/api/account/order/status', [
+                    'order_ids' => [$order->id],
+                    'status' => 'confirmed',
+                ]);
+
+            $response->assertStatus(200)
+                ->assertJsonPath('orders.0.order_id', $order->id)
+                ->assertJsonPath('orders.0.status', 'confirmed');
+
+            $this->assertDatabaseHas('orders', [
+                'id' => $order->id,
+                'status' => 'confirmed',
+            ]);
+        });
+
+        it('updates multiple order statuses in bulk via API', function () {
+            $orders = Order::factory(3)->create([
+                'user_id' => $this->user->id,
+                'status' => 'pending',
+            ]);
+
+            $orderIds = $orders->pluck('id')->all();
+
+            $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+                ->patchJson('/api/account/order/status', [
+                    'order_ids' => $orderIds,
+                    'status' => 'confirmed',
+                ]);
+
+            $response->assertStatus(200)
+                ->assertJsonCount(3, 'orders')
+                ->assertJsonPath('orders.0.updated', true);
+
+            foreach ($orderIds as $orderId) {
+                $this->assertDatabaseHas('orders', [
+                    'id' => $orderId,
+                    'status' => 'confirmed',
+                ]);
+            }
+        });
     });
 });

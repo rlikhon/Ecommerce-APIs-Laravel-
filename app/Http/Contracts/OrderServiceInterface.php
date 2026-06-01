@@ -13,4 +13,6 @@ interface OrderServiceInterface
     public function createOrder(OrderDTO $dto): array;
 
     public function confirmOrder(Order $order, ?string $description = null): Order;
+
+    public function updateOrderStatus(array $orderIds, string $newStatus, User $user): array;
 }
