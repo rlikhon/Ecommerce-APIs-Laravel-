@@ -10,6 +10,8 @@ interface OrderServiceInterface
 {
     public function getUserOrders(User $user, int $page = 1, int $perPage = 15): array;
 
+    public function getUserOrder(User $user, int $orderId): ?Order;
+
     public function createOrder(OrderDTO $dto): array;
 
     public function confirmOrder(Order $order, ?string $description = null): Order;

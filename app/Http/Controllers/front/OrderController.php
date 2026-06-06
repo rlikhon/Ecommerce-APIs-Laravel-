@@ -65,9 +65,10 @@ class OrderController extends Controller
      *
      * GET /api/account/order/{id}
      */
-    public function show(int $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
-        $order = $this->orderService->getUserOrder(auth()->user(), $id);
+        $orderId = (int) $id;
+        $order = $this->orderService->getUserOrder(auth()->user(), $orderId);
 
         if (! $order) {
             return response()->json(['message' => 'Order not found.'], 404);

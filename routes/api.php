@@ -3,6 +3,7 @@
 use App\Http\Controllers\admin\AuthController;
 use App\Http\Controllers\admin\BrandController;
 use App\Http\Controllers\admin\CategoryController;
+use App\Http\Controllers\admin\OrderController as AdminOrderController;
 use App\Http\Controllers\admin\ProductController;
 use App\Http\Controllers\admin\SizeController;
 use App\Http\Controllers\admin\TempImageController;
@@ -43,10 +44,14 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::group(['middleware' => ['auth:sanctum', 'checkAdminRole'], 'prefix' => 'admin'], function () {
-    // Route::put('/profile', [ProfileController::class, 'updateProfile']);    // ✅ Form text fields profile parameters updates
-    // Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar']);    // ✅ Binary Avatar file stream uploads
-    // Route::put('/profile/password', [ProfileController::class, 'changePassword']); // ✅ Password access modifications
+    // Order Management
+    Route::get('/orders', [AdminOrderController::class, 'index']);
+    Route::get('/orders/{id}', [AdminOrderController::class, 'show'])
+        ->where('id', '[0-9]+'); // Only accept numeric IDs;
+    Route::post('/orders/{id}/confirm', [AdminOrderController::class, 'confirm']);
+    Route::patch('/orders/{id}/status', [AdminOrderController::class, 'updateStatus']);
 
+    // Category, Brand, Product Management
     Route::apiResource('/categories', CategoryController::class);
     Route::apiResource('/brands', BrandController::class);
     Route::apiResource('/products', ProductController::class);

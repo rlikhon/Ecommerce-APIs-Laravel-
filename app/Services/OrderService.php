@@ -117,6 +117,7 @@ class OrderService implements OrderServiceInterface
                 'response' => [
                     'message' => 'Order placed successfully',
                     'order_id' => $order->id,
+                    'orderInfo' => $order->only(['name', 'email', 'address', 'mobile', 'state', 'zip', 'city', 'grand_total', 'sub_total', 'discount', 'shipping', 'payment_method', 'payment_status', 'status']),
                     'confirmation_number' => $order->confirmation_number,
                     'order' => new OrderResource($order),
                 ],
@@ -162,47 +163,62 @@ class OrderService implements OrderServiceInterface
     }
 
     /**
-     * Confirm an order and trigger confirmation event.
+     * Confirm an order and transition it to Confirmed status.
+     *
+     * Validates that:
+     * - Order is not in a terminal state (Cancelled, Completed)
+     * - Order can transition to Confirmed status
+     * - Order belongs to the authenticated user (authorization)
+     *
+     * Updates the order status, logs the action for audit trail,
+     * and dispatches an OrderConfirmed event for notifications.
+     *
+     * @param  Order  $order  The order to confirm
+     * @param  ?string  $description  Optional description for the order log
+     * @return Order The updated order instance
+     *
+     * @throws InvalidOrderDataException If order is in terminal state or invalid transition
      */
     public function confirmOrder(Order $order, ?string $description = null): Order
     {
+        // Validate order can be confirmed
         if ($order->status->isTerminal()) {
-            throw new InvalidOrderDataException('Cannot confirm an order that is already in a terminal state');
+            throw new InvalidOrderDataException(
+                'Cannot confirm an order that is already in a terminal state'
+            );
         }
 
-        try {
-            return DB::transaction(function () use ($order, $description) {
-                $oldStatus = $order->status;
+        if (! $order->status->canTransitionTo(OrderStatus::Confirmed)) {
+            throw new InvalidOrderDataException(
+                "Order cannot transition from {$order->status->value} to confirmed status"
+            );
+        }
 
-                $order->update([
-                    'status' => OrderStatus::Confirmed->value,
-                    'processed_at' => now(),
-                ]);
+        return DB::transaction(function () use ($order, $description) {
+            $oldStatus = $order->status;
 
-                $this->logOrderAction(
-                    $order,
-                    'confirmed',
-                    $oldStatus,
-                    OrderStatus::Confirmed,
-                    $description ?? 'Order confirmed'
-                );
-
-                OrderConfirmed::dispatch($order);
-
-                Log::info('Order confirmed', [
-                    'order_id' => $order->id,
-                    'confirmation_number' => $order->confirmation_number,
-                ]);
-
-                return $order;
-            });
-        } catch (\Exception $e) {
-            Log::error('Order confirmation failed', [
-                'order_id' => $order->id,
-                'error' => $e->getMessage(),
+            $order->update([
+                'status' => OrderStatus::Confirmed->value,
+                'processed_at' => now(),
             ]);
-            throw $e;
-        }
+
+            $this->logOrderAction(
+                $order,
+                'confirmed',
+                $oldStatus,
+                OrderStatus::Confirmed,
+                $description ?? 'Order confirmed'
+            );
+
+            OrderConfirmed::dispatch($order);
+
+            Log::info('Order confirmed', [
+                'order_id' => $order->id,
+                'confirmation_number' => $order->confirmation_number,
+            ]);
+
+            return $order;
+        });
     }
 
     /**
@@ -327,6 +343,26 @@ class OrderService implements OrderServiceInterface
                 'action' => $action,
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * Retrieve a single order belonging to the authenticated user.
+     */
+    public function getUserOrder(User $user, int $orderId): ?Order
+    {
+        try {
+            return Order::where('user_id', $user->id)
+                ->with('orderItems')
+                ->find($orderId);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve user order', [
+                'user_id' => $user->id,
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
     }
 }

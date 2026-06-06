@@ -17,7 +17,7 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         $validPaymentMethods = ['credit_card', 'debit_card', 'paypal', 'bank_transfer', 'cod'];
-        $validPaymentStatuses = ['pending', 'completed', 'failed', 'refunded'];
+        $validPaymentStatuses = ['paid', 'unpaid', 'partial_paid_due', 'failed', 'refunded'];
         $validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'failed'];
 
         return [
