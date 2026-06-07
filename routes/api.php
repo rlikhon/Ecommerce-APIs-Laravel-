@@ -46,8 +46,8 @@ Route::get('/user', function (Request $request) {
 Route::group(['middleware' => ['auth:sanctum', 'checkAdminRole'], 'prefix' => 'admin'], function () {
     // Order Management
     Route::get('/orders', [AdminOrderController::class, 'index']);
-    Route::get('/orders/{id}', [AdminOrderController::class, 'show'])
-        ->where('id', '[0-9]+'); // Only accept numeric IDs;
+    Route::get('/orders/{id}', [AdminOrderController::class, 'show']);
+        //->where('id', '[0-9]+'); // Only accept numeric IDs;
     Route::post('/orders/{id}/confirm', [AdminOrderController::class, 'confirm']);
     Route::patch('/orders/{id}/status', [AdminOrderController::class, 'updateStatus']);
 
